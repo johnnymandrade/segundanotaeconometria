@@ -1,0 +1,98 @@
+require(dplyr)
+require(readr)
+require(magrittr)
+
+library(readr)
+empregos <- read_csv2("C:/Users/jkopt/Documents/econometria/empregos.csv")
+
+
+library(readr)
+ipca <- read_csv2("C:/Users/jkopt/Documents/econometria/médias aparadas sem suavização/ipca.csv")
+
+
+library(readr)
+cred <- read_csv2("C:/Users/jkopt/Documents/econometria/econometria/cred.csv")
+
+
+library(readr)
+cred_pj <- read_csv2("C:/Users/jkopt/Documents/econometria/econometria/cred_pj.csv")
+
+
+names(empregos) <- c("Data", "Empregados")
+empregos$Empregados <- gsub(",", "", empregos$Empregados)
+empregos$Data <- as.numeric(paste0(substr(empregos$Data,4,7), substr(empregos$Data,1,2)))
+empregos$Empregados <- as.numeric(empregos$Empregados)
+empregos <- empregos[empregos$Data > 201102,]
+empregos <- na.exclude(empregos)
+
+ipca %<>% select(-X3)
+names(ipca) <- c("Data", "IPCA")
+ipca <- ipca[ipca$Data > 201102,]
+ipca <- ipca[ipca$Data < 202010,]
+
+cred %<>% select(-X3)
+names(cred) <- c("Data", "Cred_f")
+
+cred_pj %<>% select(-X3)
+names(cred_pj) <- c("Data", "Cred_pj")
+
+
+df <- tibble(cred,cred_pj, ipca$IPCA, empregos, .name_repair = "universal")
+
+modelo = lm(data = df, log(Empregados) ~ log(Cred_f) + log(Cred_pj)+ ipca.IPCA )
+
+summary(modelo)
+
+faraway:: vif(modelo)
+
+acf(modelo$residuals)
+
+library(lmtest)
+
+lmtest::dwtest(modelo)
+
+library(car)
+durbinWatsonTest(modelo)
+
+bgtest(modelo)
+
+
+car::ncvTest(modelo)
+
+
+library(lmtest)
+
+lmtest::bptest(modelo)
+
+library(tseries)
+
+
+
+
+adf.test(df$Empregados)
+
+adf.test(df$Cred_f)
+
+adf.test(df$Cred_pj)
+
+adf.test(df$ipca.IPCA)
+
+
+adf.test(diff(df$Empregados, 1))
+
+adf.test(diff(df$Cred_f, 1))
+
+adf.test(diff(df$Cred_pj, 1))
+
+diff_credf <- diff(df$Cred_f, 1)
+diff_credj <- diff(df$Cred_pj, 1)
+diff_empregados <- diff(df$Empregados, 1)
+ipca_diff <- ipca[-1,]
+
+df_diff <- tibble(diff_credf, diff_credj, diff_empregados, ipca_diff)
+
+modelo2 = lm(data = df_diff, (diff_empregados) ~ (diff_credf) + (diff_credj) + (IPCA) )
+
+summary(modelo2)
+
+durbinWatsonTest(modelo2)
